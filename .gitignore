@@ -1,0 +1,6 @@
+/__*
+.tashkeel/*
+.DS_Store
+.unq
+.ipynb_checkpoints
+tashkeel-data/
