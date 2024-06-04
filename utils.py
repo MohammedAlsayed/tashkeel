@@ -1,7 +1,8 @@
 # imports the necessary modules
 import os
-import re
 from collections import Counter
+
+
 
 def get_file_list(dir: str) -> dict:
     directory = {}
@@ -81,12 +82,16 @@ def is_harakah(char: str) -> bool:
     """
     Check if a character is a harakah
     """
+    if len(char) != 1:
+        return False
     return ord(char) >= 1611 and ord(char) <= 1619
 
 def is_shaddah(char: str) -> bool:
     """
     Check if a character is a shaddah
     """
+    if len(char) != 1:
+        return False
     return ord(char) == 1617
 
 def has_any_diacritics(word: str) -> bool:
@@ -102,10 +107,43 @@ def strip_harakat(sentence: str) -> str:
     return ''.join([c for c in sentence if not is_harakah(c)])
 
 def arabic_char_length(sentence: str) -> int:
+    """
+    Count the number of Arabic characters in a sentence
+    """
     words = sentence.split()
     length = 0
     length += sum(len(w) for w in words)
+    length += len(words) - 1 # spaces between words
     return length
+
+def shakkel(sentence: str, harakat:str)-> str:
+    """
+    Add harakat to a sentence
+    """
+    shakkel = ''
+    # remove start and end tokens from the sentence and harakat 
+    sentence = sentence[6:-6]
+    harakat = harakat[6:-6].split()
+
+    for s in sentence:
+        shakkel += s
+        harka = ""
+        if len(harakat) > 0 and harakat[0] == '<PAD>' and s != ' ':
+            continue
+        if s == ' ':
+            # keep poping until we reach a space in the harakat
+            while len(harakat) > 0 and harakat[0] != '<PAD>':
+                harakat.pop(0)
+            harakat.pop(0)
+        if len(harakat) > 0 and is_arabic_char(s):
+            harka = harakat.pop(0)
+            if is_harakah(harka):
+                shakkel += harka
+        if len(harakat) > 0 and is_shaddah(harka):
+            harka = harakat.pop(0)
+            shakkel += harka
+        
+    return shakkel
 
 def get_word_statistics(count_dict: Counter):
     total = 0

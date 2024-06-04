@@ -1,7 +1,7 @@
-EOS_TOKEN = 1
-SOS_TOKEN = 0
-UNK_TOKEN = 2
-PAD_TOKEN = 3
+PAD_TOKEN = 0
+SOS_TOKEN = 1
+EOS_TOKEN = 2
+UNK_TOKEN = 3
 FATHA_TOKEN = 4
 DAMMA_TOKEN = 5
 KASRA_TOKEN = 6
@@ -17,22 +17,27 @@ from tqdm import tqdm
 from collections import Counter
 
 class Tokenizer:
-    def __init__(self, max_length=256):
-        self.word2index = {"<SOS>": 0, "<EOS>": 1, "<UNK>": 2, "<PAD>": 3, "َ": 4, "ُ": 5, "ِ": 6, "ً": 7, "ٌ": 8, "ٍ": 9, "ّ": 10, "ْ": 11, "ٓ": 12}
+    def __init__(self,):
+        self.word2index = {"<PAD>": PAD_TOKEN, "<SOS>": SOS_TOKEN,
+                            "<EOS>": EOS_TOKEN, "<UNK>": UNK_TOKEN, 
+                            "َ": FATHA_TOKEN, "ُ": DAMMA_TOKEN, 
+                            "ِ": KASRA_TOKEN, "ً": TANWEEN_FATHA_TOKEN, 
+                            "ٌ": TANWEEN_DAMMA_TOKEN, "ٍ": TANWEEN_KASRA_TOKEN,
+                            "ّ": SHADA_TOKEN, "ْ": SUKOON_TOKEN, "ٓ": MADDA_TOKEN}
         self.word2count = Counter()
         self.index2word = {SOS_TOKEN: "<SOS>", 
                            EOS_TOKEN: "<EOS>", 
                            UNK_TOKEN: "<UNK>", 
                            PAD_TOKEN: "<PAD>", 
-                           FATHA_TOKEN: "<FATHA>", 
-                           DAMMA_TOKEN: "<DAMMA>", 
-                           KASRA_TOKEN: "<KASRA>", 
-                           TANWEEN_FATHA_TOKEN: "<TANWEEN_FATHA>", 
-                           TANWEEN_DAMMA_TOKEN: "<TANWEEN_DAMMA>",
-                           TANWEEN_KASRA_TOKEN: "<TANWEEN_KASRA>",
-                           SHADA_TOKEN: "<SHADA>",
-                           SUKOON_TOKEN: "<SUKOON>",
-                           MADDA_TOKEN: "<MADDA>"}
+                           FATHA_TOKEN: "َ", 
+                           DAMMA_TOKEN: "ُ", 
+                           KASRA_TOKEN: "ِ", 
+                           TANWEEN_FATHA_TOKEN: "ً", 
+                           TANWEEN_DAMMA_TOKEN: "ٌ",
+                           TANWEEN_KASRA_TOKEN: "ٍ",
+                           SHADA_TOKEN: "ّ",
+                           SUKOON_TOKEN: "ْ",
+                           MADDA_TOKEN: "ٓ"}
         self.n_words = 13
 
     def add_sentence(self, sentence):
@@ -76,39 +81,31 @@ class Tokenizer:
         
         before_c = sentence[0]
 
-        # First character must be an Arabic character, if not maybe there is a splitting issue or the dataset is corrupted.
-        # if is_harakah(before_c):
-        #     raise ValueError("First character is a harakah!", {before_c})
-        # if not is_arabic_char(before_c):
-        #     raise ValueError("First character is not an Arabic character!", {before_c})
-
         # List that contains the harakat of each character
         harkaat = []
-        count_shaddah = 0
         for next_c in sentence[1:]:
             if is_arabic_char(before_c):
                 # next character to a letter is a harakah append the harakah
                 if is_harakah(next_c):
                     harkaat.append(next_c)
                 # next character to a letter is not a harakah append UNK, becuase every letter must have a harakah
-                else:
+                elif is_arabic_char(next_c):
                     harkaat.append(self.index2word[UNK_TOKEN])
+                elif not is_harakah(next_c):
+                    harkaat.append(self.index2word[UNK_TOKEN])
+
             # Shaddah is a special case because a harakah comes after it sometimes.
             elif is_shaddah(before_c) and is_harakah(next_c):
-                count_shaddah += 1
-                harkaat.append(next_c)
-            # space between words append PAD
-            elif next_c == ' ':
+                harkaat.append(next_c)                
+
+            elif before_c == " ":
                 harkaat.append(self.index2word[PAD_TOKEN])
 
+            # print(f"next_c: {next_c} is space: {next_c == " "}",)
+            # print(f"harakat: {harkaat}")
             before_c = next_c
-        
-        # Last character may not have a harakah
-        if not is_harakah(next_c):
-            harkaat.append(self.index2word[UNK_TOKEN])
-        
-        char_length = arabic_char_length(clean_sent)
-        assert char_length+count_shaddah == len(harkaat), f"Arabic character length != harkaat length {clean_sent} != {harkaat}"
+
+
         return clean_sent, " ".join(harkaat)
     
 
