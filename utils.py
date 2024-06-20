@@ -2,8 +2,6 @@
 import os
 from collections import Counter
 
-
-
 def get_file_list(dir: str) -> dict:
     directory = {}
     for root, dirs, files in os.walk(dir):
@@ -22,18 +20,85 @@ def is_valid_word(word: str) -> bool:
     No other characters are allowed like numbers or brackets ..etc
     """
     has_arabic = False
-    for c in word:
+    for c in strip_harakat(word):
         if is_arabic_char(c):
             has_arabic = True
         if not is_arabic_char(c) and not is_special_char(c):
             return False
     return has_arabic
 
+def same_irab(word1: str, word2: str) -> bool:
+    """
+    Check if two words have the same irab (last harakah)
+    """
+    # empty string or a single character
+    if len(word1) <= 1 or len(word2) <= 1:
+        return False
+    # different word
+    if strip_harakat(word1) != strip_harakat(word2):
+        return False
+    # Check if there is shaddah
+    # Shaddah is special case because shaddah can come before harakah or vice versa
+    # And all are the same irab
+    shaddah1_idx = 0
+    shaddah2_idx = 0
+    for i in range(-2, 0):
+        if is_shaddah(word1[i]):
+            shaddah1_idx = i
+        if is_shaddah(word2[i]):
+            shaddah2_idx = i
+    
+    # one word has shaddah and the other doesn't
+    if shaddah1_idx != 0 and shaddah2_idx == 0:
+        return False
+    if shaddah1_idx == 0 and shaddah2_idx != 0:
+        return False
+        
+    # both words have shaddah
+    if shaddah1_idx != 0 and shaddah2_idx != 0:
+        harakah1_idx = -1 if shaddah1_idx == -2 else -2
+        harakah2_idx = -1 if shaddah2_idx == -2 else -2
+        return word1[harakah1_idx] == word2[harakah2_idx]
+
+    # last character is the same (harakah)
+    return word1[-1] == word2[-1]
+
+def same_sarf(word1: str, word2: str) -> bool:
+    """
+    Check if two words have the same sarf all harakah of the word are the same and ignoring 
+    what is on the last character
+    """
+    # empty string
+    if len(word1) == 0 or len(word2) == 0:
+        return False
+    # different word
+    if strip_harakat(word1) != strip_harakat(word2):
+        return False
+    harakah1 = get_word_sarf(word1)
+    harakah2 = get_word_sarf(word2)
+    return harakah1 == harakah2
+
+def get_word_sarf(word: str) -> list[str]:
+    """
+    Get the sarf of a word
+    """
+    clean_word = strip_harakat(word)
+    sarf = []
+    ch_counter = 0
+    for c in word:
+        if is_arabic_char(c):
+            ch_counter += 1
+        if ch_counter == len(clean_word):
+            break
+        if is_harakah(c):
+            sarf.append(c)
+    return sarf
+
 def is_arabic_word(word: str) -> bool:
     """
     Check if a word has only Arabic characters
     """
-    for c in word:
+    for c in strip_harakat(word):
         if not is_arabic_char(c):
             return False
     return True
@@ -72,7 +137,7 @@ def clean_words(words: list[str]) -> list[str]:
     for word in words:
         cleaned_word = ''
         for c in word:
-            if is_arabic_char(c) or is_harakah(c):
+            if is_arabic_char(c) or is_harakah(c) or is_shaddah(c):
                 cleaned_word += c
         if cleaned_word:
             cleaned.append(cleaned_word)
@@ -99,7 +164,7 @@ def has_any_diacritics(word: str) -> bool:
     Check if a word has any diacritics
     """
     for c in word:
-        if is_harakah(c):
+        if is_harakah(c) or is_shaddah(c):
             return True
     return False
 

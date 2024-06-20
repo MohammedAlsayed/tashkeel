@@ -5,10 +5,11 @@ import torch.nn.functional as F
 class EncoderRNN(nn.Module):
     def __init__(self, params):
         super(EncoderRNN, self).__init__()
-        self.hidden_size = params.hidden_size
+        self.hidden_size = params['hidden_size']
 
-        self.embedding = nn.Embedding(params.input_size, params.hidden_size)
-        self.gru = nn.GRU(params.hidden_size, params.hidden_size, dropout=params.dropout, batch_first=True)
+        self.embedding = nn.Embedding(params['input_size'], params['hidden_size'])
+        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], dropout=params['dropout'], batch_first=True)
+        self.dropout = nn.Dropout(params['dropout'])
 
     def forward(self, input):
         embedded = self.dropout(self.embedding(input))
@@ -20,17 +21,19 @@ class EncoderRNN(nn.Module):
 class DecoderRNN(nn.Module):
     def __init__(self, params):
         super(DecoderRNN, self).__init__()
-        self.embedding = nn.Embedding(params.output_size, params.hidden_size)
-        self.gru = nn.GRU(params.hidden_size, params.hidden_size, batch_first=True)
-        self.out = nn.Linear(params.hidden_size, params.output_size)
+        self.embedding = nn.Embedding(params['output_size'], params['hidden_size'])
+        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], batch_first=True)
+        self.out = nn.Linear(params['hidden_size'], params['output_size'])
+        self.params = params
 
     def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
         batch_size = encoder_outputs.size(0)
-        decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=device).fill_(SOS_token)
+        decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=self.params['device']).fill_(self.params['SOS_TOKEN'])
         decoder_hidden = encoder_hidden
         decoder_outputs = []
 
-        for i in range(MAX_LENGTH):
+        for i in range(self.params['max_length']):
+            print("i: ",i)
             decoder_output, decoder_hidden  = self.forward_step(decoder_input, decoder_hidden)
             decoder_outputs.append(decoder_output)
 
