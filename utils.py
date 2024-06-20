@@ -186,9 +186,13 @@ def shakkel(sentence: str, harakat:str)-> str:
     Add harakat to a sentence
     """
     shakkel = ''
-    # remove start and end tokens from the sentence and harakat 
-    sentence = sentence[6:-6]
-    harakat = harakat[6:-6].split()
+    # remove start and end tokens from the sentence and harakat if they exist
+    if sentence.split()[0] == "<SOS>":
+        sentence = sentence[6:-6]
+    if harakat.split()[0] == "<SOS>":
+        harakat = harakat[6:-6].split()
+    if harakat.split()[0] != "<SOS>":
+        harakat = harakat.split()
 
     for s in sentence:
         shakkel += s

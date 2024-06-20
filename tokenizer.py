@@ -15,6 +15,7 @@ MADDA_TOKEN = 12
 from utils import *
 from tqdm import tqdm
 from collections import Counter
+from langchain.docstore.document import Document
 
 class Tokenizer:
     def __init__(self, character_level=False):
@@ -72,12 +73,12 @@ class Tokenizer:
             # remove any non Arabic characters and harakat
             clean = strip_harakat(clean_sentence(doc.page_content))
 
-            # skip one word or empty sentences
-            if len(clean.split()) <= 1:
-                continue
-            # skip one character sentence
-            if arabic_char_length(clean) <= 1:
-                continue
+            # # skip one word or empty sentences
+            # if len(clean.split()) == 0:
+            #     continue
+            # # skip one character sentence
+            # if arabic_char_length(clean) <= 1:
+            #     continue
 
             self.add_sentence(clean)
 
@@ -102,10 +103,13 @@ class Tokenizer:
                 if is_harakah(next_c):
                     harkaat.append(next_c)
                 # next character to a letter is not a harakah append UNK, becuase every letter must have a harakah
-                elif is_arabic_char(next_c):
+                else:
                     harkaat.append(self.index2token[UNK_TOKEN])
-                elif not is_harakah(next_c):
-                    harkaat.append(self.index2token[UNK_TOKEN])
+
+                # elif is_arabic_char(next_c):
+                #     harkaat.append(self.index2token[UNK_TOKEN])
+                # elif not is_harakah(next_c):
+                #     harkaat.append(self.index2token[UNK_TOKEN])
 
             # Shaddah is a special case because a harakah can comes after or before it.
             elif is_shaddah(before_c) and is_harakah(next_c):
@@ -118,6 +122,9 @@ class Tokenizer:
             # print(f"harakat: {harkaat}")
             before_c = next_c
 
+        # last character in the sentence is a letter which mean last character doesn't have a harakah
+        if not is_harakah(next_c):
+            harkaat.append(self.index2token[UNK_TOKEN])
 
         return clean_sent, " ".join(harkaat)
     
@@ -130,21 +137,93 @@ class Tokenizer:
         input_sentence, target_sentence = self.seperate_words_harakat(sentence)
         if encoded:
             input_sentence = self.encode(input_sentence)
-            target_sentence = self.encode(target_sentence)
+            target_sentence = self.encode(target_sentence, is_harakat=True)
     
         return input_sentence, target_sentence
         
-    def encode(self, text) -> list[int]:
+    def encode(self, text:str, is_harakat=False) -> list[int]:
         """
-        Encode a sentence or tokens to indices make sure to add <SOS> and <EOS> tokens
+        Encode a sentence or tokens to indices adding <SOS> and <EOS> tokens
+        """
+        if is_harakat:
+                return self.encode_harakat(text)
+        if self.character_level:
+            return self.encode_character_level(text)
+
+        # word level encoding
+        return self.encode_word_level(text)
+
+    def encode_harakat(self, text:str) -> list[int]:
+        """
+        Encode harakat to indices
+        """
+        input_ids = [SOS_TOKEN] 
+        for haraka in text.split():
+            input_ids.append(self.token2index[haraka] if haraka in self.token2index else UNK_TOKEN)
+
+        input_ids.append(EOS_TOKEN)
+        return input_ids
+
+    def encode_character_level(self, text:str) -> list[int]:
+        """
+        Encode characters to indices
+        """
+        input_ids = [SOS_TOKEN] 
+        for i, word in enumerate(text.split()):
+            for c in word:
+                input_ids.append(self.token2index[c] if c in self.token2index else UNK_TOKEN)
+            # add padding between words, but not after the last word
+            if i != len(text.split()) - 1:
+                input_ids.append(PAD_TOKEN)
+        input_ids.append(EOS_TOKEN)
+        return input_ids
+
+    def encode_word_level(self, text:str) -> list[int]:
+        """
+        Encode words to indices 
         """
         input_ids = [SOS_TOKEN] 
         text_tokens = [self.token2index[word] if word in self.token2index else UNK_TOKEN for word in text.split()]
         input_ids.extend(text_tokens)
         input_ids.append(EOS_TOKEN)
         return input_ids
-            
-    def decode(self, indices: list[int]) -> str:
+    
+    def decode(self, indices: list[int], is_harakat=False) -> str:
+        """
+        Decode a list of indices to words
+        """
+        if is_harakat:
+            return self.decode_harakat(indices)
+        
+        if self.character_level:
+            return self.decode_character_level(indices)
+
+        # word level decoding
+        return ' '.join([self.index2token[i] for i in indices])
+    
+    def decode_harakat(self, indices: list[int]) -> str:
+        """
+        Decode a list of indices to harakat
+        """
+        return ' '.join([self.index2token[i] for i in indices])
+
+    def decode_character_level(self, indices: list[int]) -> str:
+        """
+        Decode a list of indices to characters
+        """
+        result = ""
+        for i in indices:
+            if i == SOS_TOKEN:
+                result += self.index2token[i] + " "
+            elif i == EOS_TOKEN:
+                result += " " + self.index2token[i]
+            elif i == PAD_TOKEN:
+                result += " "
+            else:
+                result += self.index2token[i]
+        return result
+
+    def decode_word_level(self, indices: list[int]) -> str:
         """
         Decode a list of indices to words
         """

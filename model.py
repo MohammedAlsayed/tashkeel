@@ -33,7 +33,6 @@ class DecoderRNN(nn.Module):
         decoder_outputs = []
 
         for i in range(self.params['max_length']):
-            print("i: ",i)
             decoder_output, decoder_hidden  = self.forward_step(decoder_input, decoder_hidden)
             decoder_outputs.append(decoder_output)
 
