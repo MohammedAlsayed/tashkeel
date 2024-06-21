@@ -2,6 +2,7 @@
 
 This is a character-level seq2seq LSTM diacritization model with the below archeticture.
 
+```
 EncoderRNN(
   (embedding): Embedding(55, 128)
   (lstm): LSTM(128, 64, num_layers=2, batch_first=True, dropout=0.1, bidirectional=True)
@@ -12,7 +13,7 @@ DecoderRNN(
   (lstm): LSTM(128, 64, batch_first=True)
   (out): Linear(in_features=64, out_features=13, bias=True)
 )
-
+```
 
 # Usage
 
