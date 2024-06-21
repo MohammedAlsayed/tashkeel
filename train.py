@@ -68,10 +68,34 @@ def inference(encoder, decoder, input_tensor):
     decoder.eval()
 
     with torch.no_grad():
-        encoder_outputs, encoder_hidden = encoder(input_tensor)
+
+        batch_size = input_tensor.size(0)
+        hidden = encoder.init_hidden(batch_size)
+        encoder_outputs, encoder_hidden = encoder(input_tensor, hidden)
         decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden)
 
     return decoder_outputs.argmax(dim=-1)
+
+def test_result(dataloader, encoder, decoder):
+    encoder.eval()
+    decoder.eval()
+
+    with torch.no_grad():
+        total = 0
+        for data in dataloader:
+            input_tensor, target_tensor = data
+            output_tensor = inference(encoder, decoder, input_tensor)
+            # average accuracy of the batch
+            for i,t in zip(output_tensor, target_tensor):
+                # count matching numbers in the two tensors using torch function
+                equal = torch.eq(i, t).sum()
+                if equal == target_tensor.size(-1):
+                    pass
+                total += equal.item()
+        
+        return total / (len(dataloader.dataset) * target_tensor.size(-1))
+
+            
 
 def asMinutes(s):
     m = math.floor(s / 60)

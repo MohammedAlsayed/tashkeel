@@ -16,6 +16,7 @@ from utils import *
 from tqdm import tqdm
 from collections import Counter
 from langchain.docstore.document import Document
+import json
 
 class Tokenizer:
     def __init__(self, character_level=False):
@@ -47,6 +48,25 @@ class Tokenizer:
             for i in range(1569, 1611):
                 self.add_word(chr(i))
 
+    def save(self, path: str):
+        with open(path, 'w') as f:
+            f.write(json.dumps(self.token2index))
+            f.write("\n")
+            f.write(json.dumps(self.token2count))
+            f.write("\n")
+            f.write(json.dumps(self.index2token))
+            f.write("\n")
+            f.write(str(self.n_tokens))
+
+    def load(self, path: str):
+        with open(path, 'r') as f:
+            self.token2index = json.loads(f.readline())
+            self.token2count = json.loads(f.readline())
+            self.index2token = json.loads(f.readline())
+            # convert keys to int
+            self.index2token = {int(k): v for k, v in self.index2token.items()}
+            self.n_tokens = int(f.readline())
+
     def add_sentence(self, sentence: str):
         for word in sentence.split(' '):
             self.add_word(word)
@@ -70,17 +90,8 @@ class Tokenizer:
         Build a tokenizer from a list of sentences
         """
         for doc in tqdm(train_docs):
-
             # remove any non Arabic characters and harakat
             clean = strip_harakat(clean_sentence(doc.page_content))
-
-            # # skip one word or empty sentences
-            # if len(clean.split()) == 0:
-            #     continue
-            # # skip one character sentence
-            # if arabic_char_length(clean) <= 1:
-            #     continue
-
             self.add_sentence(clean)
 
     def seperate_words_harakat(self, sentence: str) -> tuple[str, str]:
@@ -154,10 +165,10 @@ class Tokenizer:
         if is_harakat:
                 return self.encode_harakat(text)
         if self.character_level:
-            return self.encode_character_level(text)
+            return self.encode_character_level(strip_harakat(text))
 
         # word level encoding
-        return self.encode_word_level(text)
+        return self.encode_word_level(strip_harakat(text))
 
     def encode_harakat(self, text:str) -> list[int]:
         """
