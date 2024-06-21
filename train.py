@@ -19,12 +19,16 @@ def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
         encoder_optimizer.zero_grad()
         decoder_optimizer.zero_grad()
 
-        encoder_outputs, encoder_hidden = encoder(input_tensor)
+        batch_size = input_tensor.size(0)
+        hidden = encoder.init_hidden(batch_size)
+        encoder_outputs, encoder_hidden = encoder(input_tensor, hidden)
         decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, None)
+
         loss = criterion(
             decoder_outputs.view(-1, decoder_outputs.size(-1)),
             target_tensor.view(-1)
         )
+        
         loss.backward()
 
         encoder_optimizer.step()
@@ -44,8 +48,10 @@ def validate(dataloader, encoder, decoder, criterion):
         for data in dataloader:
             input_tensor, target_tensor = data
 
-            encoder_outputs, encoder_hidden = encoder(input_tensor)
-            decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
+            batch_size = input_tensor.size(0)
+            hidden = encoder.init_hidden(batch_size)
+            encoder_outputs, encoder_hidden = encoder(input_tensor, hidden)
+            decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, None)
 
             loss = criterion(
                 decoder_outputs.view(-1, decoder_outputs.size(-1)),

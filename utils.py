@@ -185,6 +185,7 @@ def shakkel(sentence: str, harakat:str)-> str:
     """
     Add harakat to a sentence
     """
+    sentence = strip_harakat(sentence.strip())
     shakkel = ''
     # remove start and end tokens from the sentence and harakat if they exist
     if sentence.split()[0] == "<SOS>":
@@ -197,21 +198,22 @@ def shakkel(sentence: str, harakat:str)-> str:
     for s in sentence:
         shakkel += s
         harka = ""
+        # finished harakat of the current word go to the next word
         if len(harakat) > 0 and harakat[0] == '<PAD>' and s != ' ':
             continue
+        # finished the current word's harakat go to the next harakah
         if s == ' ':
             # keep poping until we reach a space in the harakat
             while len(harakat) > 0 and harakat[0] != '<PAD>':
                 harakat.pop(0)
-            harakat.pop(0)
+            harakat.pop(0) # pop the space <PAD>
         if len(harakat) > 0 and is_arabic_char(s):
             harka = harakat.pop(0)
             if is_harakah(harka):
                 shakkel += harka
-        if len(harakat) > 0 and is_shaddah(harka):
+        if len(harakat) > 0 and is_shaddah(harka) and is_harakah(harakat[0]):
             harka = harakat.pop(0)
             shakkel += harka
-        
     return shakkel
 
 def get_word_statistics(count_dict: Counter):
