@@ -191,7 +191,7 @@ def shakkel(sentence: str, harakat:str)-> str:
         sentence = sentence[6:-6]
     if harakat.split()[0] == "<SOS>":
         harakat = harakat[6:-6].split()
-    if harakat.split()[0] != "<SOS>":
+    elif harakat.split()[0] != "<SOS>":
         harakat = harakat.split()
 
     for s in sentence:

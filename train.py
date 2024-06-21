@@ -20,8 +20,7 @@ def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
         decoder_optimizer.zero_grad()
 
         encoder_outputs, encoder_hidden = encoder(input_tensor)
-        decoder_outputs, _, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
-
+        decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, None)
         loss = criterion(
             decoder_outputs.view(-1, decoder_outputs.size(-1)),
             target_tensor.view(-1)
@@ -46,7 +45,7 @@ def validate(dataloader, encoder, decoder, criterion):
             input_tensor, target_tensor = data
 
             encoder_outputs, encoder_hidden = encoder(input_tensor)
-            decoder_outputs, _, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
+            decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden, target_tensor)
 
             loss = criterion(
                 decoder_outputs.view(-1, decoder_outputs.size(-1)),
@@ -57,6 +56,16 @@ def validate(dataloader, encoder, decoder, criterion):
 
     return total_loss / len(dataloader)
 
+
+def inference(encoder, decoder, input_tensor):
+    encoder.eval()
+    decoder.eval()
+
+    with torch.no_grad():
+        encoder_outputs, encoder_hidden = encoder(input_tensor)
+        decoder_outputs, _ = decoder(encoder_outputs, encoder_hidden)
+
+    return decoder_outputs.argmax(dim=-1)
 
 def asMinutes(s):
     m = math.floor(s / 60)
@@ -72,8 +81,8 @@ def timeSince(since, percent):
 
 def main(train_dataloader, validate_dataloader, encoder, decoder, n_epochs, learning_rate=0.001, print_every=100):
     start = time.time()
-    print_loss_total = 0  # Reset every print_every
-    plot_loss_total = 0  # Reset every plot_every
+    print_loss_total = 0  
+    plot_loss_total = 0 
 
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
@@ -88,4 +97,4 @@ def main(train_dataloader, validate_dataloader, encoder, decoder, n_epochs, lear
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             validate_loss = validate(validate_dataloader, encoder, decoder, criterion)
-            print(f'time: {timeSince(start, epoch / n_epochs)}\nepoch:{epoch}\n%{epoch / n_epochs * 100}\ntrain loss:{print_loss_avg}\nvalidate loss:{validate_loss}')
+            print(f'time (time left): {timeSince(start, epoch / n_epochs)}\nepoch:{epoch}/{n_epochs}\ntrain loss: {print_loss_avg: 0.3f}, validate loss: {validate_loss:0.3f}')

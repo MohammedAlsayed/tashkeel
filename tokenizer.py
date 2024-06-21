@@ -39,7 +39,8 @@ class Tokenizer:
                            SHADA_TOKEN: "ّ",
                            SUKOON_TOKEN: "ْ",
                            MADDA_TOKEN: "ٓ"}
-        self.n_tokens = 13
+        self.output_size = len(self.index2token) # output will be only harakat SOS and EOS
+        self.n_tokens = len(self.index2token)
 
         self.character_level = character_level
         if self.character_level:
@@ -90,13 +91,25 @@ class Tokenizer:
             return "", ""
         
         clean_sent = strip_harakat(sentence)
+        # empty sentence
         if len(clean_sent) == 0:
             raise ValueError("Sentence has no Arabic characters", {sentence})
+        
+        # one letter sentence
+        if len(clean_sent) == 1:
+            harkaat = []
+            for c in sentence[1:]:
+                if is_harakah(c):
+                    harkaat.append(c)
+            if harkaat == []:
+                harkaat.append(self.index2token[UNK_TOKEN])
+            return clean_sent, " ".join(harkaat)
         
         before_c = sentence[0]
 
         # List that contains the harakat of each character
         harkaat = []
+        next_c = None
         for next_c in sentence[1:]:
             if is_arabic_char(before_c):
                 # next character to a letter is a harakah append the harakah
@@ -106,11 +119,6 @@ class Tokenizer:
                 else:
                     harkaat.append(self.index2token[UNK_TOKEN])
 
-                # elif is_arabic_char(next_c):
-                #     harkaat.append(self.index2token[UNK_TOKEN])
-                # elif not is_harakah(next_c):
-                #     harkaat.append(self.index2token[UNK_TOKEN])
-
             # Shaddah is a special case because a harakah can comes after or before it.
             elif is_shaddah(before_c) and is_harakah(next_c):
                 harkaat.append(next_c)                
@@ -118,12 +126,10 @@ class Tokenizer:
             elif before_c == " ":
                 harkaat.append(self.index2token[PAD_TOKEN])
 
-            # print(f"next_c: {next_c} is space: {next_c == " "}",)
-            # print(f"harakat: {harkaat}")
             before_c = next_c
 
         # last character in the sentence is a letter which mean last character doesn't have a harakah
-        if not is_harakah(next_c):
+        if next_c != None and not is_harakah(next_c):
             harkaat.append(self.index2token[UNK_TOKEN])
 
         return clean_sent, " ".join(harkaat)

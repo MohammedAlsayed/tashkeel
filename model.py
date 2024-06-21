@@ -5,10 +5,8 @@ import torch.nn.functional as F
 class EncoderRNN(nn.Module):
     def __init__(self, params):
         super(EncoderRNN, self).__init__()
-        self.hidden_size = params['hidden_size']
-
         self.embedding = nn.Embedding(params['input_size'], params['hidden_size'])
-        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], dropout=params['dropout'], batch_first=True)
+        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], dropout=params['dropout'], num_layers=params['n_layers'], bidirectional=True, batch_first=True)
         self.dropout = nn.Dropout(params['dropout'])
 
     def forward(self, input):
@@ -22,14 +20,14 @@ class DecoderRNN(nn.Module):
     def __init__(self, params):
         super(DecoderRNN, self).__init__()
         self.embedding = nn.Embedding(params['output_size'], params['hidden_size'])
-        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], batch_first=True)
+        self.gru = nn.GRU(params['hidden_size'], params['hidden_size'], 1, batch_first=True)
         self.out = nn.Linear(params['hidden_size'], params['output_size'])
         self.params = params
 
     def forward(self, encoder_outputs, encoder_hidden, target_tensor=None):
         batch_size = encoder_outputs.size(0)
-        decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=self.params['device']).fill_(self.params['SOS_TOKEN'])
-        decoder_hidden = encoder_hidden
+        decoder_input = torch.empty(batch_size, 1, dtype=torch.long, device=self.params['device']).fill_(self.params['PAD_TOKEN'])
+        decoder_hidden = encoder_hidden.mean(dim=0).reshape(1, batch_size, -1)
         decoder_outputs = []
 
         for i in range(self.params['max_length']):
@@ -46,7 +44,7 @@ class DecoderRNN(nn.Module):
 
         decoder_outputs = torch.cat(decoder_outputs, dim=1)
         decoder_outputs = F.log_softmax(decoder_outputs, dim=-1)
-        return decoder_outputs, decoder_hidden, None # We return `None` for consistency in the training loop
+        return decoder_outputs, decoder_hidden
 
     def forward_step(self, input, hidden):
         output = self.embedding(input)
