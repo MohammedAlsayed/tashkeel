@@ -32,7 +32,13 @@ def main(args):
     input_text = args.input
     input_encoded = tokenizer.encode(input_text)
     input_ids = np.zeros((1, params['max_input']), dtype=np.int32)
-    input_ids[0, :len(input_encoded)] = input_encoded
+    
+    if len(input_encoded) > params['max_input']:
+        input_ids[0, :params['max_input']] = input_encoded
+        print("Input text longer then {}, input will be trimmed.".format(params['max_input']))
+    else:
+        input_ids[0, :len(input_encoded)] = input_encoded
+
     input_tensor = torch.LongTensor(input_ids).reshape(1, -1).to(device) # to make batch first
     output = inference(encoder, decoder, input_tensor)[0]
     # to remove SOS and EOS tokens

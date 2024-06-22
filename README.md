@@ -15,8 +15,15 @@ DecoderRNN(
 )
 ```
 
-# Usage
+# Installation
+
+
+- Create virtual env:
 
 ```
-python3 main.py --input "محمد"
+virtualenv -p $(which python3) .tashkeel
+source .tashkeel/bin/activate 
+pip install -r requirements.txt
 ```
+
+- Inference:

@@ -216,6 +216,26 @@ def shakkel(sentence: str, harakat:str)-> str:
             shakkel += harka
     return shakkel
 
+def get_name(k):
+    if k == "َ":
+        return "fatha"
+    elif k == "ُ":
+        return "damma"
+    elif k == "ِ":
+        return "kasra"
+    elif k == "ْ":
+        return "sukun"
+    elif k == "ّ":
+        return "shadda"
+    elif k == "ً":
+        return "tanween fatha"
+    elif k == "ٌ":
+        return "tanween damma"
+    elif k == "ٍ":
+        return "tanween kasra"
+    else:
+        return k
+
 def get_word_statistics(count_dict: Counter):
     total = 0
     count_ar_words = 0

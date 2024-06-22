@@ -85,6 +85,8 @@ def test_result(dataloader, encoder, decoder):
 
     total = 0
     equal_list = []
+    y_true = []
+    y_pred = []
     for data in dataloader:
         input_tensor, target_tensor = data
         output_tensor = inference(encoder, decoder, input_tensor)
@@ -92,12 +94,14 @@ def test_result(dataloader, encoder, decoder):
         for idx, (predict,target) in enumerate(zip(output_tensor, target_tensor)):
             # count matching numbers in the two tensors using torch function
             equal = torch.eq(predict, target).sum()
+            y_pred.extend(predict.tolist())
+            y_true.extend(target.tolist())
             if equal == target_tensor.size(-1):
                 equal_list.append([input_tensor[idx], predict, target])
             total += equal.item()
 
     print(f'accuracy: {total / (len(dataloader.dataset) * target_tensor.size(-1))}')
-    return equal_list
+    return equal_list, y_true, y_pred
 
 def prepare_data(docs, tokenizer):
     max_input = 0  
@@ -143,13 +147,20 @@ def get_dataloader(pairs, max_input, max_target, batch_size, device, truncate=Tr
 
 # clean the data
 def clean_data(docs):
+    """
+    Removes empty documents, documents with no diacritics, and duplicates
+    """
     cleaned_docs = []
+    unique = set()
     for doc in tqdm(docs):
         clean = clean_sentence(doc.page_content)
         if len(clean) == 0:
             continue
         if not has_any_diacritics(clean):
             continue
+        if clean in unique:
+            continue
+        unique.add(clean)
         cleaned_doc = Document(page_content=clean, metadata=doc.metadata)
         cleaned_docs.append(cleaned_doc)
     return cleaned_docs
