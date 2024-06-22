@@ -3,7 +3,11 @@ import math
 import torch.nn as nn
 from torch import optim
 import torch
-
+from tqdm import tqdm
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+import numpy as np
+from utils import clean_sentence, has_any_diacritics
+from langchain.docstore.document import Document
 
 def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion):
@@ -68,7 +72,6 @@ def inference(encoder, decoder, input_tensor):
     decoder.eval()
 
     with torch.no_grad():
-
         batch_size = input_tensor.size(0)
         hidden = encoder.init_hidden(batch_size)
         encoder_outputs, encoder_hidden = encoder(input_tensor, hidden)
@@ -80,22 +83,76 @@ def test_result(dataloader, encoder, decoder):
     encoder.eval()
     decoder.eval()
 
-    with torch.no_grad():
-        total = 0
-        for data in dataloader:
-            input_tensor, target_tensor = data
-            output_tensor = inference(encoder, decoder, input_tensor)
-            # average accuracy of the batch
-            for i,t in zip(output_tensor, target_tensor):
-                # count matching numbers in the two tensors using torch function
-                equal = torch.eq(i, t).sum()
-                if equal == target_tensor.size(-1):
-                    pass
-                total += equal.item()
-        
-        return total / (len(dataloader.dataset) * target_tensor.size(-1))
+    total = 0
+    equal_list = []
+    for data in dataloader:
+        input_tensor, target_tensor = data
+        output_tensor = inference(encoder, decoder, input_tensor)
+        # average accuracy of the batch
+        for idx, (predict,target) in enumerate(zip(output_tensor, target_tensor)):
+            # count matching numbers in the two tensors using torch function
+            equal = torch.eq(predict, target).sum()
+            if equal == target_tensor.size(-1):
+                equal_list.append([input_tensor[idx], predict, target])
+            total += equal.item()
 
-            
+    print(f'accuracy: {total / (len(dataloader.dataset) * target_tensor.size(-1))}')
+    return equal_list
+
+def prepare_data(docs, tokenizer):
+    max_input = 0  
+    max_target = 0
+    average_target = 0
+    average_input = 0
+    pairs = []
+    for doc in tqdm(docs):
+        try:
+            input_ids, target_ids = tokenizer.get_pair(doc.page_content, encoded=True)
+        except:
+            # print("exception: ", doc.page_content)
+            continue
+        pairs.append((input_ids, target_ids))
+        max_input = max(max_input, len(input_ids))
+        max_target = max(max_target, len(target_ids))
+        average_target += len(target_ids)
+        average_input += len(input_ids)
+
+    average_target /= len(pairs)
+    average_input /= len(pairs)
+    
+    return pairs, max_input, max_target, average_input, average_target
+
+def get_dataloader(pairs, max_input, max_target, batch_size, device, truncate=True):
+    n = len(pairs)
+    input_ids = np.zeros((n, max_input), dtype=np.int32)
+    target_ids = np.zeros((n, max_target), dtype=np.int32)
+
+    for idx, (inp_ids, tgt_ids) in tqdm(enumerate(pairs)):
+        if truncate:
+            inp_ids = inp_ids[:max_input]
+            tgt_ids = tgt_ids[:max_target]
+        input_ids[idx, :len(inp_ids)] = inp_ids
+        target_ids[idx, :len(tgt_ids)] = tgt_ids
+
+    data = TensorDataset(torch.LongTensor(input_ids).to(device),
+                               torch.LongTensor(target_ids).to(device))
+
+    sampler = RandomSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
+    return dataloader
+
+# clean the data
+def clean_data(docs):
+    cleaned_docs = []
+    for doc in tqdm(docs):
+        clean = clean_sentence(doc.page_content)
+        if len(clean) == 0:
+            continue
+        if not has_any_diacritics(clean):
+            continue
+        cleaned_doc = Document(page_content=clean, metadata=doc.metadata)
+        cleaned_docs.append(cleaned_doc)
+    return cleaned_docs
 
 def asMinutes(s):
     m = math.floor(s / 60)
