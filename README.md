@@ -18,7 +18,7 @@ DecoderRNN(
 # Installation
 
 
-- Create virtual env:
+- Setup by creating virtual env:
 
 ```
 virtualenv -p $(which python3) .tashkeel
@@ -26,4 +26,4 @@ source .tashkeel/bin/activate
 pip install -r requirements.txt
 ```
 
-- Inference:
+- Inference: `python3 main.py --input "محمد"`
