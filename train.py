@@ -8,6 +8,7 @@ from torch.utils.data import TensorDataset, DataLoader, RandomSampler
 import numpy as np
 from utils import clean_sentence, has_any_diacritics
 from langchain.docstore.document import Document
+from tokenizer import PAD_TOKEN
 
 def train_epoch(dataloader, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion):
@@ -177,14 +178,14 @@ def timeSince(since, percent):
     rs = es - s
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
-def main(train_dataloader, validate_dataloader, encoder, decoder, n_epochs, learning_rate=0.001, print_every=100):
+def train(train_dataloader, validate_dataloader, encoder, decoder, n_epochs, learning_rate=0.01, print_every=100):
     start = time.time()
     print_loss_total = 0  
     plot_loss_total = 0 
 
-    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
+    encoder_optimizer = optim.AdamW(encoder.parameters(), lr=learning_rate, weight_decay=0.01)
+    decoder_optimizer = optim.AdamW(decoder.parameters(), lr=learning_rate, weight_decay=0.01)
+    criterion = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
 
     for epoch in range(1, n_epochs + 1):
         loss = train_epoch(train_dataloader, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)

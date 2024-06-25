@@ -1,6 +1,10 @@
 # imports the necessary modules
 import os
 from collections import Counter
+import torch
+import json
+from model import EncoderRNN, DecoderRNN
+from tokenizer import Tokenizer
 
 def get_file_list(dir: str) -> dict:
     directory = {}
@@ -149,7 +153,7 @@ def is_harakah(char: str) -> bool:
     """
     if len(char) != 1:
         return False
-    return ord(char) >= 1611 and ord(char) <= 1619
+    return ord(char) >= 1611 and ord(char) <= 1618
 
 def is_shaddah(char: str) -> bool:
     """
@@ -207,11 +211,14 @@ def shakkel(sentence: str, harakat:str)-> str:
             while len(harakat) > 0 and harakat[0] != '<PAD>':
                 harakat.pop(0)
             harakat.pop(0) # pop the space <PAD>
+
+        # add the harakah to the word
         if len(harakat) > 0 and is_arabic_char(s):
             harka = harakat.pop(0)
             if is_harakah(harka):
                 shakkel += harka
-        if len(harakat) > 0 and is_shaddah(harka) and is_harakah(harakat[0]):
+        # special case for shaddah, it ususally accompanies a harakah
+        if len(harakat) > 0 and is_shaddah(harka) and is_harakah(harakat[0]) and not is_shaddah(harakat[0]):
             harka = harakat.pop(0)
             shakkel += harka
     return shakkel
@@ -235,6 +242,23 @@ def get_name(k):
         return "tanween kasra"
     else:
         return k
+    
+# def load_model(path: str='pickels'):
+#     """
+#     Load model and tokenizer
+#     """
+#     tokenizer = Tokenizer(character_level=True)
+#     tokenizer.load(f"{path}/tokenizer.pkl")
+#     device = torch.device("cpu")
+#     with open(f'{path}/params.json', 'r') as f:
+#         params = json.load(f)
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     params['device'] = device
+#     encoder = EncoderRNN(params).to(device)
+#     decoder = DecoderRNN(params).to(device)
+#     encoder.load_state_dict(torch.load(f'{path}/encoder.pth'))
+#     decoder.load_state_dict(torch.load(f'{path}/decoder.pth'))
+#     return tokenizer, encoder, decoder, params
 
 def get_word_statistics(count_dict: Counter):
     total = 0
