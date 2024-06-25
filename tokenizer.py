@@ -10,7 +10,7 @@ TANWEEN_DAMMA_TOKEN = 8
 TANWEEN_KASRA_TOKEN = 9
 SHADA_TOKEN = 10
 SUKOON_TOKEN = 11
-MADDA_TOKEN = 12
+# MADDA_TOKEN = 12
 
 from utils import *
 from tqdm import tqdm
@@ -20,14 +20,15 @@ import json
 
 class Tokenizer:
     def __init__(self, character_level=False):
-        self.token2index = {"<PAD>": PAD_TOKEN, "<SOS>": SOS_TOKEN,
+        # output to index
+        self.out2index = {"<PAD>": PAD_TOKEN, "<SOS>": SOS_TOKEN,
                             "<EOS>": EOS_TOKEN, "<UNK>": UNK_TOKEN, 
                             "َ": FATHA_TOKEN, "ُ": DAMMA_TOKEN, 
                             "ِ": KASRA_TOKEN, "ً": TANWEEN_FATHA_TOKEN, 
                             "ٌ": TANWEEN_DAMMA_TOKEN, "ٍ": TANWEEN_KASRA_TOKEN,
-                            "ّ": SHADA_TOKEN, "ْ": SUKOON_TOKEN, "ٓ": MADDA_TOKEN}
-        self.token2count = Counter()
-        self.index2token = {SOS_TOKEN: "<SOS>", 
+                            "ّ": SHADA_TOKEN, "ْ": SUKOON_TOKEN}
+        # index to output
+        self.index2out = {SOS_TOKEN: "<SOS>", 
                            EOS_TOKEN: "<EOS>", 
                            UNK_TOKEN: "<UNK>", 
                            PAD_TOKEN: "<PAD>", 
@@ -38,10 +39,17 @@ class Tokenizer:
                            TANWEEN_DAMMA_TOKEN: "ٌ",
                            TANWEEN_KASRA_TOKEN: "ٍ",
                            SHADA_TOKEN: "ّ",
-                           SUKOON_TOKEN: "ْ",
-                           MADDA_TOKEN: "ٓ"}
-        self.output_size = len(self.index2token) # output will be only harakat SOS and EOS
-        self.n_tokens = len(self.index2token)
+                           SUKOON_TOKEN: "ْ"}
+        
+        # input encoding
+        self.token2count = Counter()
+        self.token2index = {"<PAD>": PAD_TOKEN, "<SOS>": SOS_TOKEN,
+                            "<EOS>": EOS_TOKEN, "<UNK>": UNK_TOKEN}
+        self.index2token = {SOS_TOKEN: "<SOS>", 
+                           EOS_TOKEN: "<EOS>", 
+                           UNK_TOKEN: "<UNK>", 
+                           PAD_TOKEN: "<PAD>"}
+        self.n_tokens = 4 # initial length
 
         self.character_level = character_level
         if self.character_level:
@@ -50,6 +58,10 @@ class Tokenizer:
 
     def save(self, path: str):
         with open(path, 'w') as f:
+            f.write(json.dumps(self.out2index))
+            f.write("\n")
+            f.write(json.dumps(self.index2out))
+            f.write("\n")
             f.write(json.dumps(self.token2index))
             f.write("\n")
             f.write(json.dumps(self.token2count))
@@ -58,14 +70,24 @@ class Tokenizer:
             f.write("\n")
             f.write(str(self.n_tokens))
 
+
     def load(self, path: str):
         with open(path, 'r') as f:
+            self.out2index = json.loads(f.readline())
+            self.index2out = json.loads(f.readline())
+            self.index2out = {int(k): v for k, v in self.index2out.items()}
             self.token2index = json.loads(f.readline())
             self.token2count = json.loads(f.readline())
             self.index2token = json.loads(f.readline())
             # convert keys to int
             self.index2token = {int(k): v for k, v in self.index2token.items()}
             self.n_tokens = int(f.readline())
+
+    def get_input_size(self):
+        return self.n_tokens
+
+    def get_output_size(self):
+        return len(self.out2index)
 
     def add_sentence(self, sentence: str):
         for word in sentence.split(' '):
@@ -176,7 +198,7 @@ class Tokenizer:
         """
         input_ids = [SOS_TOKEN] 
         for haraka in text.split():
-            input_ids.append(self.token2index[haraka] if haraka in self.token2index else UNK_TOKEN)
+            input_ids.append(self.out2index[haraka] if haraka in self.out2index else UNK_TOKEN)
 
         input_ids.append(EOS_TOKEN)
         return input_ids
@@ -222,7 +244,7 @@ class Tokenizer:
         """
         Decode a list of indices to harakat
         """
-        return ' '.join([self.index2token[i] for i in indices])
+        return ' '.join([self.index2out[i] for i in indices])
 
     def decode_character_level(self, indices: list[int]) -> str:
         """
